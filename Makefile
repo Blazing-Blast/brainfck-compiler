@@ -2,9 +2,9 @@ BFC = bfc
 BFC_OBJS = src/brainfuck.o
 CC = g++
 LD = g++
-CC_ARGS = -O3 -g
+CC_ARGS = -O3 -flto
 AS = nasm
-AS_ARGS = -f elf64 -g -F dwarf
+AS_ARGS = -f elf64 -F dwarf
 TESTS =  \
 	examples/hello \
 	examples/zero
@@ -15,7 +15,7 @@ check: $(TESTS)
 	
 
 $(BFC): $(BFC_OBJS)
-	@$(LD) $^ -o $@ $(CC_ARGS) -g
+	@$(LD) $^ -o $@ $(CC_ARGS)
 	@echo LD    $@
 
 clean:
@@ -28,7 +28,7 @@ clean:
 	
 
 %: %.o src/wrapper.o
-	@$(CC) $^ -o $@ -fno-pie -no-pie -g
+	@$(CC) $^ -o $@ -fno-pie -no-pie
 	@echo LD    $@
 
 %.o: %.cpp

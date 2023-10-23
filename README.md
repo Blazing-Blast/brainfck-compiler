@@ -35,5 +35,5 @@ make filename
 
 ## What is brainf*ck?
 
-Brainf*ck is an esoteric language consisting of 5 legal characters: +, -, <, >, [, ], . and an infinite array of bytes.
-In the backend it also stores an index into the array. The < and > charcters move that pointer around by one, +/- increment/dectrement the current byte by one and anything between [] gets looped over while the currect cell is not 0.
+Brainf*ck is an esoteric language consisting of 5 legal characters: `+`, `-`, `<`, `>`, `[`, `]`, . and an infinite array of bytes.
+In the backend it also stores an index into the array. The `<` and `>` charcters move that pointer around by one, `+`/`-` increments/dectrements the current byte by one, and anything between `[ ]` gets looped over while the currect cell is not `0`.
