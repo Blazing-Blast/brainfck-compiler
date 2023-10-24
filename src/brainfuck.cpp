@@ -3,6 +3,9 @@
 #include <vector>
 
 void compile(std::ostream &out, std::istream &in);
+int inc(std::istream &in);
+int mov(std::istream &in);
+int cal(std::istream &in);
 
 std::streambuf *buf;
 std::ofstream _of;
@@ -30,9 +33,11 @@ size_t loops = 0; // Every label can only be used once. So make sure to keep a c
 size_t len = 1;
 size_t max_len = 1;
 int next;
+int num = 0;
 void compile(std::ostream &out, std::istream &in)
 {
 	loop_vec.push_back(__SIZE_MAX__);
+	next = in.get();
 	out << "section .text\n"
 		<< "extern putc\n"
 		<< "extern fgets\n"
@@ -45,17 +50,31 @@ void compile(std::ostream &out, std::istream &in)
 		<< "    xor  rax, rax\n";
 	while (1)
 	{
-		next = in.get();
 		size_t n = loop_vec.back();
 		switch (next)
 		{
 		case '+':
-			out << "    inc  al\n";
+			next = in.get();
+			if (next == '+' || next == '-')
+			{
+				num = 1;
+				out << "    add  al, " << inc(in) << '\n';
+			}
+			else
+				out << "    inc  al\n";
 			break;
 		case '-':
-			out << "    dec  al\n";
+			next = in.get();
+			if (next == '+' || next == '-')
+			{
+				num = -1;
+				out << "    add  al, " << inc(in) << '\n';
+			}
+			else
+				out << "    dec  al\n";
 			break;
 		case '[':
+			next = in.get();
 			loop_vec.push_back(loops);
 			out << ".L" << loops << ":\n"
 				<< "    test rax, rax\n"
@@ -64,6 +83,7 @@ void compile(std::ostream &out, std::istream &in)
 			loops++;
 			break;
 		case ']':
+			next = in.get();
 			out
 				<< "    jmp  .L" << n << '\n'
 				<< ".L" << n << "end:\n";
@@ -71,29 +91,52 @@ void compile(std::ostream &out, std::istream &in)
 			loop_vec.pop_back();
 			break;
 		case '<': // Only read/write memory when it is needed. Otherwise just keep it in a register.
-			out << "    mov [array + rcx], al\n"
-				<< "    dec  rcx\n"
-				<< "    mov  al, [array + rcx]\n";
-			len--;
+			next = in.get();
+			out << "    mov [array + rcx], al\n";
+			if (next == '<' || next == '>')
+			{
+				num = -1;
+				out << "    add  rcx, " << mov(in) << '\n';
+			}
+			else
+				out << "    dec  rcx\n";
+			out << "    mov  al, [array + rcx]\n";
+			len += num;
 			break;
 		case '>':
-			out << "    mov [array + rcx], al\n"
-				<< "    inc  rcx\n"
-				<< "    mov  al, [array + rcx]\n";
-			len++;
-			if (len > max_len)
+			next = in.get();
+			out << "    mov [array + rcx], al\n";
+			if (next == '<' || next == '>')
+			{
+				num = 1;
+				out << "    add  rcx, " << mov(in) << '\n';
+			}
+			else
+				out << "    inc  rcx\n";
+			out << "    mov  al, [array + rcx]\n";
+			len += num;
+			if (max_len < len)
 				max_len = len;
 			break;
 		case '.':
+			next = in.get();
 			out << "    mov  rdi, rax\n"
 				<< "    mov  rsi, [stdout]\n"
 				<< "    push rax\n"
-				<< "    push rcx\n"
-				<< "    call putc\n"
-				<< "    pop  rcx\n"
+				<< "    push rcx\n";
+			if (next == '.')
+			{
+				num = 2;
+				for (size_t i = cal(in); i >= 0; i++)
+					out << "    call putc\n";
+			}
+			else
+				out << "    call putc\n";
+			out << "    pop  rcx\n"
 				<< "    pop  rax\n";
 			break;
 		case ',':
+			next = in.get();
 			out << "    mov  rdi, string\n"
 				<< "    mov  rsi, 2\n"
 				<< "    mov  rdx, [stdin]\n"
@@ -107,6 +150,7 @@ void compile(std::ostream &out, std::istream &in)
 			goto compile_end;
 			break;
 		default:
+			next = in.get();
 			break;
 		}
 	}
@@ -115,4 +159,60 @@ compile_end:
 		<< "section .data\n"
 		<< "array times " << max_len << " db 0\n"
 		<< "string dq 0, 0\n";
+}
+
+int inc(std::istream &in)
+{
+	while (1)
+	{
+		switch (next)
+		{
+		case '+':
+			num++;
+			break;
+		case '-':
+			num--;
+			break;
+		default:
+			return num;
+		}
+		next = in.get();
+	}
+}
+
+int mov(std::istream &in)
+{
+	while (1)
+	{
+		switch (next)
+		{
+		case '>':
+			num++;
+			len++;
+			break;
+		case '<':
+			num--;
+			len--;
+			break;
+		default:
+			return num;
+		}
+		next = in.get();
+	}
+}
+
+int cal(std::istream &in)
+{
+	while (1)
+	{
+		switch (next)
+		{
+		case '.':
+			num++;
+			break;
+		default:
+			return num;
+		}
+		next = in.get();
+	}
 }
